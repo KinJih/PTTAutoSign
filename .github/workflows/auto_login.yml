@@ -118,8 +118,8 @@ jobs:
         ptt_id_2: ${{ secrets.ptt_id_2 }}
         bot_token: ${{ secrets.bot_token }}
         chat_id: ${{ secrtes.chat_id }}
-        run: |
-          poetry run python main.py
+      run: |
+        poetry run python main.py
     - name: branch rename
       run: |
         export TZ='Asia/Taipei'
