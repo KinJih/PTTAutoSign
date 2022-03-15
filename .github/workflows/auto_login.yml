@@ -1,0 +1,135 @@
+name: Auto Login
+
+on:
+  push:
+  schedule:
+    - cron: "30 2 * * *"
+  workflow_dispatch:
+
+jobs:
+  Check_run:
+    runs-on: ubuntu-latest
+    outputs:
+      PROCEED: ${{ steps.checking.outputs.PROCEED }}
+    steps:
+    - name: Get date and hour
+      run: |
+        export TZ='Asia/Taipei'
+        echo "today=$(date +"%Y.%m.%d")" >> $GITHUB_ENV
+        echo "hour=$(date +%-H)" >> $GITHUB_ENV
+        echo "yesterday=$(date -d "1 day ago" "+%Y.%m.%d")" >> $GITHUB_ENV
+    - name: Have we run this today?
+      id: checking
+      run: |
+        getBranch=$(curl -s -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/${{ github.repository }}/git/matching-refs/heads/${{ env.today }} | jq -r '.[0] | .ref')
+        if [[ $getBranch == "null" ]]; then
+          isBranchFound=0
+          if [[ ${{ env.hour }} -gt 12 ]]; then
+            designedHour=12
+          else
+            designedHour=$(expr ${{ env.hour }} + $((RANDOM % $(expr 12 - ${{ env.hour }}))))
+          fi
+        else
+          isBranchFound=1
+          designedHour=${getBranch##*.}
+          [[ $designedHour -gt 12 && $designedHour -ne 24 ]] && designedHour=12 || true
+        fi
+        if [[ ${{ github.event_name }} == "workflow_dispatch" ]]; then
+          PROCEED=1
+          echo "[INFO] 手動觸發，將會執行登入。"
+        elif [[ $designedHour -eq 24 ]]; then
+          PROCEED=0
+          echo "[INFO] 今天已經執行過。"
+        elif [[ ${{ env.hour }} -ge $designedHour ]]; then
+          PROCEED=1
+          echo "[INFO] 將於下一個步驟執行登入。"
+        else
+          PROCEED=0
+          echo "[INFO] 將在 $designedHour 點執行登入。"
+        fi
+        echo "isBranchFound=$isBranchFound" >> $GITHUB_ENV
+        echo "designedHour=$designedHour" >> $GITHUB_ENV
+        echo "::set-output name=PROCEED::$PROCEED"
+        echo "[DEBUG] isBranchFound=$isBranchFound, designedHour=$designedHour, event_name=${{ github.event_name }}, PROCEED=$PROCEED"
+    - name: Create new branch
+      if: ${{ env.isBranchFound == 0 }} 
+      run: |
+        curl -s \
+          -X POST \
+          -H "Accept: application/vnd.github.v3+json" \
+          -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          https://api.github.com/repos/${{ github.repository }}/git/refs \
+          -d '{"ref":"refs/heads/${{ env.today }}.${{ env.designedHour }}","sha":"${{ github.sha }}"}'
+    - name: Commit new file
+      if: ${{ env.isBranchFound == 0 }} 
+      run: |
+        curl -s \
+          -X PUT \
+          -H "Accept: application/vnd.github.v3+json" \
+          -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          https://api.github.com/repos/${{ github.repository }}/contents/${{ env.today }} \
+          -d '{"message":"${{ env.today }}","content":"","branch":"${{ env.today }}.${{ env.designedHour }}","committer":{"name":"runner","email":"github-action@github.com"}}'
+    - name: Delete old branch
+      if: ${{ env.isBranchFound == 0 }}
+      run: |
+        getOldBranchName=$(curl -s -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/${{ github.repository }}/git/matching-refs/heads/${{ env.yesterday }} | jq -r '.[0] | .ref')
+        if [[ $getOldBranchName != "null" ]]; then
+          getOldBranchName=${getOldBranchName##*/}
+          curl -s \
+            -X DELETE \
+            -H "Accept: application/vnd.github.v3+json" \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/${{ github.repository }}/git/refs/heads/$getOldBranchName"
+        fi
+  Sign_in:
+    if: ${{ needs.Check_run.outputs.PROCEED == 1 }}
+    needs: [Check_run]
+    runs-on: ubuntu-latest
+    steps:
+    - name: Check out repository
+      uses: actions/checkout@v2
+    - name: Set up python
+      id: setup-python
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.9
+    - name: Install Poetry
+      uses: snok/install-poetry@v1
+      with:
+        virtualenvs-create: true
+        virtualenvs-in-project: true
+        installer-parallel: true
+    - name: Load cached venv
+      id: cached-poetry-dependencies
+      uses: actions/cache@v2
+      with:
+        path: .venv
+        key: venv-${{ runner.os }}-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('**/poetry.lock') }}
+    - name: Install dependencies
+      if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
+      run: poetry install --no-interaction --no-root
+    - name: Install library
+      run: poetry install --no-interaction
+    - name: Auto login PTT
+      env:
+        GH_REPO: ${{ github.repository }}
+        GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        ptt_id_1: ${{ secrets.ptt_id_1 }}
+        ptt_id_2: ${{ secrets.ptt_id_2 }}
+        bot_token: ${{ secrets.bot_token }}
+        chat_id: ${{ secrtes.chat_id }}
+        run: |
+          poetry run python main.py
+    - name: branch rename
+      run: |
+        export TZ='Asia/Taipei'
+        today=$(date +"%Y.%m.%d")
+        getBranch=$(curl -s -H "Accept: application/vnd.github.v3+json" "https://api.github.com/repos/${{ github.repository }}/git/matching-refs/heads/$today" | jq -r '.[0] | .ref')
+        branceName=${getBranch##*/}
+        newName=$(echo "$today.24")
+        curl \
+          -X POST \
+          -H "Accept: application/vnd.github.v3+json" \
+          -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          "https://api.github.com/repos/${{ github.repository }}/branches/$branceName/rename" \
+          -d '{"new_name":"'$newName'"}'
