@@ -139,7 +139,7 @@ def run_check(check: bool = True, flags: bool = False) -> bool:
 
 if __name__ == '__main__':
     if run_check(check=True):
-        if not os.getenv('ptt_id'):
+        if not os.getenv('PTT_ID'):
             print('未輸入帳號資料')
             os.exit(1)
 
