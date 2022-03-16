@@ -116,7 +116,7 @@ jobs:
         GH_TOKEN: ${{ secrets.GH_TOKEN }}
         ptt_id_1: ${{ secrets.PTT_ID }}
         bot_token: ${{ secrets.BOT_TOKEN }}
-        chat_id: ${{ secrtes.CHAT_ID }}
+        chat_id: ${{ secrets.CHAT_ID }}
       run: |
         poetry run python main.py
     - name: branch rename
