@@ -11,7 +11,7 @@ PTT 自動簽到，最近老人在用的 PTT 終於又重新開放註冊了，�
 ```
 BOT_TOKEN  -> telegram bot token
 CHAT_ID    -> telegram chat id
-PTT_ID   -> ptt 帳號 (username,passwd)
+PTT_ID     -> ptt 帳號 (username,passwd)
 ```
 3. 最後點自己 `Repo` 的 `Action`，找到左側 `Auto Login` 打開 workflow。 \
   ![image](https://user-images.githubusercontent.com/11913223/127421102-ada99cea-f20b-43ca-8899-8ba65b4b733b.png)
