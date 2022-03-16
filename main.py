@@ -147,6 +147,6 @@ if __name__ == '__main__':
         ptt = PTT.API(log_level=PTT.log.level.SILENT)
         ptt_id, ptt_passwd = PTT_ID.split(',')
         
-        run_daily_login(ptt_id, ptt_passwd)
+        run_daily_login(ptt_id, ptt_passwd, bot)
         run_check(check=False, flags=True)
     
