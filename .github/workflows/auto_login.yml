@@ -114,10 +114,9 @@ jobs:
       env:
         GH_REPO: ${{ github.repository }}
         GH_TOKEN: ${{ secrets.GH_TOKEN }}
-        ptt_id_1: ${{ secrets.ptt_id_1 }}
-        ptt_id_2: ${{ secrets.ptt_id_2 }}
-        bot_token: ${{ secrets.bot_token }}
-        chat_id: ${{ secrtes.chat_id }}
+        ptt_id_1: ${{ secrets.PTT_ID }}
+        bot_token: ${{ secrets.BOT_TOKEN }}
+        chat_id: ${{ secrtes.CHAT_ID }}
       run: |
         poetry run python main.py
     - name: branch rename
