@@ -144,7 +144,7 @@ if __name__ == '__main__':
             os.exit(1)
 
         bot = Bot(BOT_TOKEN, CHAT_ID)
-        ptt = PTT.API(log_level=PTT.log.level.SILENT)
+        ptt = PTT.API()
         ptt_id, ptt_passwd = PTT_ID.split(',')
         
         run_daily_login(ptt_id, ptt_passwd, bot)
